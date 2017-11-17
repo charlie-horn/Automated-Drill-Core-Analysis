@@ -87,15 +87,15 @@ plt.show()
 grey_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 grey_image_path = os.path.splitext(image_path)[0]+"_alterred.pgm"
 cv2.imwrite(grey_image_path, grey_image)
-sub.call(["/home/rockmass/mthe494/catkin_ws/src/elsdc/src/elsdc", grey_image_path])
+sub.call(["/home/Roxanne/mthe493/catkin_ws/src/elsdc/src/elsdc", grey_image_path])
 
 # Find longest vertical polygons from output
-currentDir = os.getcwd()
-polygons = currentDir + "out_polygon.txt"
-for polygon in polygons:
-	split_line = polygon.split(' ')
-	index = split_line[0]
-	length = 
+#currentDir = os.getcwd()
+#polygons = currentDir + "out_polygon.txt"
+#for polygon in polygons:
+#	split_line = polygon.split(' ')
+#	index = split_line[0]
+#	length = 
 
 
 

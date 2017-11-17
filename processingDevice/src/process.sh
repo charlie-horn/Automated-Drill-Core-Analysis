@@ -10,4 +10,4 @@ mkdir $outputFolder
 cd $outputFolder
 cp $image .
 
-python $HOME/mthe494/catkin_ws/src/processingDevice/src/process.py $image
+python $HOME/mthe493/catkin_ws/src/processingDevice/src/process.py $image
