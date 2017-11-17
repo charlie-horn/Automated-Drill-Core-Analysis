@@ -30,6 +30,7 @@ Requirements
 ELSDc requires CLAPACK/CBLAS library for some linear algebra computations.
 Version 3.2.1 was used.
 
+Added by Charlie: Run this command "sudo apt-get install liblapack-dev -y ; sudo apt-get install liblapack3 -y ; sudo apt-get install libopenblas-base -y ; sudo apt-get install libopenblas-dev -y"
 
 Compilation
 -----------
