@@ -83,7 +83,7 @@ grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 grey_image_path = os.path.splitext(new_image_path)[0]+".pgm"
 cv2.imwrite(grey_image_path, grey_image)
 home_dir = os.path.expanduser("~")
-elsdc_path = home_dir + "/mthe493/catkin_ws/src/elsdc/src/elsdc"
+elsdc_path = home_dir + "/MTHE493/elsdc/src/elsdc"
 sub.call([elsdc_path, grey_image_path])
 
 # Find longest vertical polygons from output

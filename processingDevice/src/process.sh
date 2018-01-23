@@ -14,4 +14,4 @@ separator="/"
 echo $image_name
 new_image_path=$PWD$separator$image_name
 
-python $HOME/mthe493/catkin_ws/src/processingDevice/src/process.py $new_image_path
+python $HOME/MTHE493/processingDevice/src/process.py $new_image_path
