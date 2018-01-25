@@ -1,6 +1,6 @@
 #!/bin/bash
 
-image=$(zenity --file-selection --title="Choose image")
+image=$(zenity --file-selection --title="circle2img3.pgm")
 outputDir=$(zenity --file-selection --directory --title="Choose output folder")
 defaultOutputFolder=$(date '+%d_%m_%Y_%H_%M_%S')
 outputFolder=$(zenity --entry --title "Outlier Fraction" --text="Pick a name for the output folder." --entry-text=$defaultOutputFolder)
