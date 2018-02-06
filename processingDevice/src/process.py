@@ -146,14 +146,14 @@ for edge in long_edges:
 
 # Draw long lines on image
 
-for line in long_lines:
-	for point in line:
-		for i in range(0,point[0]):
-			try:
-				# image[point[1],i] = [0,255,0]
-			except(IndexError):
-				continue
+# for line in long_lines:
+# 	for point in line:
+# 		for i in range(0,point[0]):
+# 			try:
+# 				image[point[1],i] = [0,255,0]
+# 			except(IndexError):
+# 				continue
 
 cv2.imwrite(new_image_path, image)
 cv2.imshow('Added Green', image)
-cv2.waitKey(0)
+# cv2.waitKey(0)
