@@ -11,61 +11,89 @@ import sys
 import os
 import math
 import re
+import shutil
 
 ##--------------Subroutines----------------
 
 def svgToCoords(path):
 
-	in_path = path
-	out_path = "os.path.splitext(path)[0]" + "_coordinates.txt"
+	trunc = os.path.splitext(path)[0]
+	txt_path = trunc + ".txt"
+
+	shutil.copyfile(path, txt_path)
+
+	in_path = txt_path
+	out_path = trunc + "_coordinates.txt"
 
 	in_f = open(in_path, 'r')
 	out_f = open(out_path, 'w')
 
-	type_check = re.compile(r"\<(<type>\w+)"
-	path_pattern = re.compile(r"\<(<type>\w+) d="M 545.904775,351.973887 A620.572292,620.572292 0.000000 0,1 547.188710,380.040344" fill="none" stroke ="red" stroke-width="1" />"
-	line_pattern = 
+	f = in_f.readlines()
 
-	first = True
+	#type_check = re.compile(r"\<(<type>\w[4])=.*"
+	#path_pattern = re.compile(r"\<(<type>\w+) d="M 545.904775,351.973887 A620.572292,620.572292 0.000000 0,1 547.188710,380.040344" fill="none" stroke ="red" stroke-width="1" />"
+	line_pattern = re.compile(r'<(?P<type>\w{4}) x1=\"(?P<x1>\d+\.?\d*)\" y1=\"(?P<y1>\d+\.?\d*)\" x2=\"(?P<x2>\d+\.\d*?)\" y2=\"(?P<y2>\d+\.?\d*)\".*')
 
-	for i, line in f.readlines():
+	for i, line in enumerate(f):
 
-		continue if i < 5
-
+		if i < 5: continue
+		
 		# For now skip paths, only check lines
-		continue if line.startswith
+		if not line.startswith("<line"): continue
 
-		path_match = re.match(path_pattern, line)
+		#path_match = re.match(path_pattern, line)
 		line_match = re.match(line_pattern, line)
 
-		continue if path_match.groups('type') != 'path' && line_match.groups('type') != 'line'
+		x1 = float(line_match.group('x1'))
+		y1 = float(line_match.group('y1'))
+		x2 = float(line_match.group('x2'))
+		y2 = float(line_match.group('y2'))
 
-		if line_type
+		p1 = (x1,y1)
+		p2 = (x2,y2)
 
+		edge = (p1,p2)
 
+		coords = getCoords(edge)
 
-def getLine(edge):
+		for point in coords:
+			out_f.write(str(point[0]) + " " + str(point[1]) + ",")
+			#filehandle.seek(-1, os.SEEK_END)
+			#filehandle.truncate()
+	
+	in_f.close()
+	out_f.close()
+	
+	return
+
+def draw_line(coords, image):
+	for point in coords:
+		try:
+			image[point[1],point[0]] = [0,255,0]
+		except(IndexError):
+			continue
+	return
+
+def getCoords(edge):
 	x1 = edge[0][0]
 	y1 = edge[0][1]
 	x2 = edge[1][0]
 	y2 = edge[1][1]
 	
-	line = []
-
-	#if y1 > y2:
-	#	x_temp = x1
-	#	x1 = x2
-	#	x2 = x_temp
-	#	y_temp = y1
-	#	y1 = y2
-	#	y2 = y_temp
+	coords = []
 
 	m, b = getMB(x1,y1,x2,y2)
 
-	for y in range(int(y1),int(y2)+1):
-		x = int((y-b)/m)
-		line.append((x,y))
-	return line
+	if abs((x1-x2)) < abs((y1-y2)):
+		for y in range(int(y1),int(y2)+1):
+			x = int((y-b)/m)
+			coords.append((x,y))
+		return coords
+	else:
+		for x in range(int(x1),int(x2)+1):
+			y = int(m*x+b)
+			coords.append((x,y))
+		return coords
 
 def getMB(x1,y1,x2,y2):
 	rise = y2 - y1
@@ -105,8 +133,6 @@ sub.call(["cp", "-f", image_path, new_image_path])
 # Read in new image for editing
 
 image = cv2.imread(new_image_path)
-image_height = image.shape[0]
-min_line_length = image_height/3
 
 # Apply original ELSDc with no modification to parameters
 
@@ -117,74 +143,9 @@ home_dir = os.path.expanduser("~")
 elsdc_path = home_dir + "/mthe493/catkin_ws/src/elsdc/src/elsdc"
 sub.call([elsdc_path, grey_image_path])
 
-# Find longest vertical polygons from output
+# Convert output.svg to a txt file containing X,Y coordinates for all lines
 
-currentDir = os.getcwd()
-polygon_file = open(currentDir + "/out_polygon.txt", 'r')
-polygons = {}
-long_edges = []
-for polygon in polygon_file.readlines():
-	split_line = polygon.split(' ')
-	index = split_line[0]
-	length = split_line[1] #Amount or vertices in the polygon
-	polygons[index] = []
-	i =  2 #Start from the first x coordinate
-	while i < len(split_line)-1:
-		(x,y) = float(split_line[i]), float(split_line[i+1])
-		polygons[index].append((x,y))
-		i += 2
-
-		current_polygon = polygons[index]
-		flagged_as_long = False
-		for ref_vertex in current_polygon:
-			for comp_vertex in current_polygon:
-				x_dist = ref_vertex[0] - comp_vertex[0]
-				y_dist = ref_vertex[1] - comp_vertex[1]
-				side_length = math.sqrt(x_dist**2+y_dist**2)
-				if side_length >= min_line_length:
-					long_edges.append((ref_vertex, comp_vertex))
-					flagged_as_long = True
-					break
-			if flagged_as_long:
-				break
-
-long_lines = []
-
-# Determine if the lines are far left or far right
-
-left_line = []
-for line in long_lines:
-	furthest_left = True
-	for point in line:
-		for compare_line in long_lines:
-			for compare_point in compare_line:
-				if point[1] == compare_point[1]:
-					if compare_point[0] < point[0]:
-						furthest_left = False
-						break
-					else:
-						break
-			if not furthest_left:
-				break
-		if not furthest_left:
-			break
-	if furthest_left:
-	 left_line = line
-
-for edge in long_edges:
-	line = getLine(edge)
-	long_lines.append(line)
-
-# Draw long lines on image
-
-for line in long_lines:
-	for point in line:
-		for i in range(0,point[0]):
-			try:
-				image[point[1],i] = [0,255,0]
-			except(IndexError):
-				continue
+svgToCoords(os.path.dirname(new_image_path)+"/output.svg")
 
 cv2.imwrite(new_image_path, image)
-cv2.imshow('Added Green', image)
 cv2.waitKey(0)
