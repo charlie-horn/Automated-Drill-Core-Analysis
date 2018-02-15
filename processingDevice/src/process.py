@@ -10,8 +10,39 @@ import subprocess as sub
 import sys
 import os
 import math
+import re
 
 ##--------------Subroutines----------------
+
+def svgToCoords(path):
+
+	in_path = path
+	out_path = "os.path.splitext(path)[0]" + "_coordinates.txt"
+
+	in_f = open(in_path, 'r')
+	out_f = open(out_path, 'w')
+
+	type_check = re.compile(r"\<(<type>\w+)"
+	path_pattern = re.compile(r"\<(<type>\w+) d="M 545.904775,351.973887 A620.572292,620.572292 0.000000 0,1 547.188710,380.040344" fill="none" stroke ="red" stroke-width="1" />"
+	line_pattern = 
+
+	first = True
+
+	for i, line in f.readlines():
+
+		continue if i < 5
+
+		# For now skip paths, only check lines
+		continue if line.startswith
+
+		path_match = re.match(path_pattern, line)
+		line_match = re.match(line_pattern, line)
+
+		continue if path_match.groups('type') != 'path' && line_match.groups('type') != 'line'
+
+		if line_type
+
+
 
 def getLine(edge):
 	x1 = edge[0][0]
