@@ -16,7 +16,7 @@ from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier
 
 ##--------------Subroutines----------------
 
-def svgToCoords_2(svg_path):
+def svgToCoords(svg_path):
 	trunc = os.path.splitext(svg_path)[0]
 	txt_path = trunc + ".txt"
 
@@ -47,10 +47,9 @@ def svgToCoords_2(svg_path):
 			start = complex(float(x1),float(y1))
 			end = complex(float(x2),float(y2))
 
-			coords = getLineCoords_2(start, end)
+			coords = getLineCoords(start, end)
 			out_f.write(str(coords))
 			out_f.write("\n")
-			print("LINE")
 			
 		elif line.startswith("<path"):
 
@@ -72,12 +71,11 @@ def svgToCoords_2(svg_path):
 			coords = getPathCoords(start, radius, rotation, arc, sweep, end)
 			out_f.write(str(coords))
 			out_f.write("\n")
-			print("PATH")
 
 	in_f.close()
 	out_f.close()
 
-def getLineCoords_2(start, end):
+def getLineCoords(start, end):
 	path = Line(start, end)
 	coords = []
 
@@ -100,87 +98,29 @@ def drange(start, stop, step):
 		yield start
 		start += step
 
-def svgToCoords(svg_path):
-	trunc = os.path.splitext(svg_path)[0]
-	txt_path = trunc + ".txt"
+def drawLine(coords, image, colour=[0,255,0]):
+	for point in coords.split(", "):
+		print(point)
+		if point.startswith("["):
+			point = point[2:-1]
+			print(point)
+		elif point.endswith("]"):
+			point = point[1:-2]
+			print(point)
+		else:
+			point = point[1:-1]
+			print(point)
 
-	shutil.copyfile(svg_path, txt_path)
-
-	in_path = txt_path
-	out_path = trunc + "_coordinates.txt"
-
-	in_f = open(in_path, 'r')
-	out_f = open(out_path, 'w')
-
-	f = in_f.readlines()
-
-	#type_check = re.compile(r"\<(<type>\w[4])=.*"
-	#path_pattern = re.compile(r"\<(<type>\w+) d="M 545.904775,351.973887 A620.572292,620.572292 0.000000 0,1 547.188710,380.040344" fill="none" stroke ="red" stroke-width="1" />"
-	line_pattern = re.compile(r'<(?P<type>\w{4}) x1=\"(?P<x1>\d+\.?\d*)\" y1=\"(?P<y1>\d+\.?\d*)\" x2=\"(?P<x2>\d+\.\d*?)\" y2=\"(?P<y2>\d+\.?\d*)\".*')
-
-	for i, line in enumerate(f):
-
-		if i < 5: continue
-		
-		# For now skip paths, only check lines
-		if not line.startswith("<line"): continue
-
-		#path_match = re.match(path_pattern, line)
-		line_match = re.match(line_pattern, line)
-
-		x1 = float(line_match.group('x1'))
-		y1 = float(line_match.group('y1'))
-		x2 = float(line_match.group('x2'))
-		y2 = float(line_match.group('y2'))
-
-		p1 = (x1,y1)
-		p2 = (x2,y2)
-
-		edge = (p1,p2)
-
-		coords = getLineCoords(edge)
-
-		for point in coords:
-			out_f.write(str(point[0]) + " " + str(point[1]) + ",")
-			#filehandle.seek(-1, os.SEEK_END)
-			#filehandle.truncate()
-	
-	in_f.close()
-	out_f.close()
-	
-	return
-
-def draw_line(coords, image):
-	for point in coords:
+		point = complex(point)
+		x = point.real
+		print(x)
+		y = point.imag
+		print(y)
 		try:
-			image[point[1],point[0]] = [0,255,0]
+			image[y,x] = colour
 		except(IndexError):
 			continue
 	return
-
-def getLineCoords(edge):
-	x1 = edge[0][0]
-	y1 = edge[0][1]
-	x2 = edge[1][0]
-	y2 = edge[1][1]
-	
-	coords = []
-
-	m, b = getMB(x1,y1,x2,y2)
-
-	if abs((x1-x2)) < abs((y1-y2)):
-		for y in range(int(y1),int(y2)+1):
-			x = int((y-b)/m)
-			coords.append((x,y))
-		return coords
-	else:
-		for x in range(int(x1),int(x2)+1):
-			y = int(m*x+b)
-			coords.append((x,y))
-		return coords
-
-
-	
 
 def getMB(x1,y1,x2,y2):
 	rise = y2 - y1
@@ -232,7 +172,91 @@ sub.call([elsdc_path, grey_image_path])
 
 # Convert output.svg to a txt file containing X,Y coordinates for all lines
 
-svgToCoords_2(os.path.dirname(new_image_path)+"/output.svg")
+svgToCoords(os.path.dirname(new_image_path)+"/output.svg")
+
+# Draw all detected lines in a given colour
+
+coords_file = os.path.dirname(new_image_path)+"/output_coordinates.txt"
+
+cf = open(coords_file, 'r')
+
+for i, line in enumerate(cf.readlines()):
+	drawLine(line.rstrip("\n"), image)
 
 cv2.imwrite(new_image_path, image)
 cv2.waitKey(0)
+
+##--------------Backup Subroutines (Remove once others have been checked)----------------
+
+
+def svgToCoords_bk(svg_path):
+	trunc = os.path.splitext(svg_path)[0]
+	txt_path = trunc + ".txt"
+
+	shutil.copyfile(svg_path, txt_path)
+
+	in_path = txt_path
+	out_path = trunc + "_coordinates.txt"
+
+	in_f = open(in_path, 'r')
+	out_f = open(out_path, 'w')
+
+	f = in_f.readlines()
+
+	#type_check = re.compile(r"\<(<type>\w[4])=.*"
+	#path_pattern = re.compile(r"\<(<type>\w+) d="M 545.904775,351.973887 A620.572292,620.572292 0.000000 0,1 547.188710,380.040344" fill="none" stroke ="red" stroke-width="1" />"
+	line_pattern = re.compile(r'<(?P<type>\w{4}) x1=\"(?P<x1>\d+\.?\d*)\" y1=\"(?P<y1>\d+\.?\d*)\" x2=\"(?P<x2>\d+\.\d*?)\" y2=\"(?P<y2>\d+\.?\d*)\".*')
+
+	for i, line in enumerate(f):
+
+		if i < 5: continue
+		
+		# For now skip paths, only check lines
+		if not line.startswith("<line"): continue
+
+		#path_match = re.match(path_pattern, line)
+		line_match = re.match(line_pattern, line)
+
+		x1 = float(line_match.group('x1'))
+		y1 = float(line_match.group('y1'))
+		x2 = float(line_match.group('x2'))
+		y2 = float(line_match.group('y2'))
+
+		p1 = (x1,y1)
+		p2 = (x2,y2)
+
+		edge = (p1,p2)
+
+		coords = getLineCoords(edge)
+
+		for point in coords:
+			out_f.write(str(point[0]) + " " + str(point[1]) + ",")
+			#filehandle.seek(-1, os.SEEK_END)
+			#filehandle.truncate()
+	
+	in_f.close()
+	out_f.close()
+	
+	return
+
+
+def getLineCoords_bk(edge):
+	x1 = edge[0][0]
+	y1 = edge[0][1]
+	x2 = edge[1][0]
+	y2 = edge[1][1]
+	
+	coords = []
+
+	m, b = getMB(x1,y1,x2,y2)
+
+	if abs((x1-x2)) < abs((y1-y2)):
+		for y in range(int(y1),int(y2)+1):
+			x = int((y-b)/m)
+			coords.append((x,y))
+		return coords
+	else:
+		for x in range(int(x1),int(x2)+1):
+			y = int(m*x+b)
+			coords.append((x,y))
+		return coords
