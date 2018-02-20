@@ -100,22 +100,16 @@ def drange(start, stop, step):
 
 def drawLine(coords, image, colour=[0,255,0]):
 	for point in coords.split(", "):
-		print(point)
 		if point.startswith("["):
 			point = point[2:-1]
-			print(point)
 		elif point.endswith("]"):
 			point = point[1:-2]
-			print(point)
 		else:
 			point = point[1:-1]
-			print(point)
 
 		point = complex(point)
 		x = point.real
-		print(x)
 		y = point.imag
-		print(y)
 		try:
 			image[y,x] = colour
 		except(IndexError):
