@@ -72,3 +72,26 @@ def getLineCoords_bk(edge):
 			y = int(m*x+b)
 			coords.append((x,y))
 		return coords
+
+
+## 
+
+
+	for ref_point in ref_reader:
+		f.seek(0)
+		comp_reader = f.readlines
+		for comp_point in comp_reader:
+		first_green = None
+		second_green = None
+		while y <= height:
+			if np.array_equal(image[x,y], [0,255,0]) and first_green is None:
+				first_green = y
+			elif np.array_equal(image[x,y], [0,255,0]):
+				second_green = y
+				if abs(first_green - second_green) < MAX_DISTANCE:
+					# put a box around this area
+				next
+			else:
+				y += 1
+				continue
+

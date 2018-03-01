@@ -13,7 +13,7 @@ import math
 import re
 import shutil
 from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier
-
+import random
 ##--------------Subroutines----------------
 
 def svgToCoords(svg_path):
@@ -24,9 +24,15 @@ def svgToCoords(svg_path):
 
 	in_path = txt_path
 	out_path = trunc + "_coordinates.txt"
-
+	core_1_path = trunc + "_core1.txt"
+	core_2_path = trunc + "_core2.txt"
+	core_3_path = trunc + "_core3.txt"
+	
 	in_f = open(in_path, 'r')
 	out_f = open(out_path, 'w')
+	core_1 = open(core_1_path, 'w')
+	core_2 = open(core_2_path, 'w')
+	core_3 = open(core_3_path, 'w')
 	
 	f = in_f.readlines()
 
@@ -39,46 +45,74 @@ def svgToCoords(svg_path):
 			
 			line_match = re.match(line_pattern, line)
 
-			x1 = line_match.group('x1')
-			y1 = line_match.group('y1')
-			x2 = line_match.group('x2')
-			y2 = line_match.group('y2')
+			x1 = float(line_match.group('x1'))
+			y1 = float(line_match.group('y1'))
+			x2 = float(line_match.group('x2'))
+			y2 = float(line_match.group('y2'))
 
-			start = complex(float(x1),float(y1))
+			start = complex(x1,y1)
+			middle = (int(x1+(x2-x1)/2),int(y1+(y2-y1)/2))
 			end = complex(float(x2),float(y2))
 
 			coords = getLineCoords(start, end)
 			if coords != []:
+				if middle[0] in CORE1_XVALS:
+					for i in coords: core_1.write(str(middle)+",")
+					core_1.write("\n")
+				elif middle[0] in CORE2_XVALS:
+					for i in coords: core_2.write(str(middle)+",")
+					core_2.write("\n")
+				elif middle[0] in CORE3_XVALS:
+					for i in coords: core_3.write(str(middle)+",")
+					core_3.write("\n")
+				else:
+					print "SOMETHING FUCKED UP"
 				out_f.write(str(coords))
 				out_f.write("\n")
 			
 		elif line.startswith("<path"):
 
 			path_match = re.match(path_pattern, line)
-			x1 = path_match.group('x1')
-			y1 = path_match.group('y1')
+			x1 = float(path_match.group('x1'))
+			y1 = float(path_match.group('y1'))
 			r1 = path_match.group('r1')
 			r2 = path_match.group('r2')
 			rotation = float(path_match.group('rotation'))
 			arc = int(path_match.group('arc'))
 			sweep = int(path_match.group('sweep'))
-			x2 = path_match.group('x2')
-			y2 = path_match.group('y2')
+			x2 = float(path_match.group('x2'))
+			y2 = float(path_match.group('y2'))
 
-			start = complex(float(x1),float(y1))
+			start = complex(x1,y1)
 			radius = complex(float(r1),float(r2))
-			end = complex(float(x2),float(y2))
+			middle = (int(x1+(x2-x1)/2),int(y1+(y2-y1)/2))
+			end = complex(x2,y2)
 
 			coords = getPathCoords(start, radius, rotation, arc, sweep, end)
-			out_f.write(str(coords))
-			out_f.write("\n")
+			if coords != []:
+				if middle[0] in CORE1_XVALS:
+					core_1.write(str(middle)+"\n")
+				elif middle[0] in CORE2_XVALS:
+					core_2.write(str(middle)+"\n")
+				elif middle[0] in CORE3_XVALS:
+					core_3.write(str(middle)+"\n")
+				else:
+					print "SOMETHING FUCKED UP"
+				out_f.write(str(coords))
+				out_f.write("\n")
 
 	in_f.close()
+	core_1.close()
+	core_2.close()
+	core_3.close()
 	out_f.close()
 
 def getLineCoords(start, end):
 	path = Line(start, end)
 	coords = []
+
+	if path.length() < MIN_LINE_LENGTH:
+		return coords
 
 	slope = getSlope(start, end)
 	if abs(slope) > MAX_SLOPE:
@@ -91,6 +125,13 @@ def getLineCoords(start, end):
 def getPathCoords(start, radius, rotation, arc, sweep, end):
 	path = Arc(start, radius, rotation, arc, sweep, end)
 	coords = []
+
+	if path.length() < MIN_LINE_LENGTH:
+		return coords
+
+	slope = getSlope(start, end)
+	if abs(slope) > MAX_SLOPE:
+		return coords
 
 	for i in drange(0, 1, 0.01):
 		coords.append(path.point(i))
@@ -126,6 +167,85 @@ def getSlope(start, end):
 	slope = rise/run
 	return slope
 
+# CLUSTER
+
+def cluster_points(X, mu):
+    clusters  = {}
+    for x in X:
+        bestmukey = min([(i[0], np.linalg.norm(x-mu[i[0]])) \
+                    for i in enumerate(mu)], key=lambda t:t[1])[0]
+        try:
+            clusters[bestmukey].append(x)
+        except KeyError:
+            clusters[bestmukey] = [x]
+    return clusters
+ 
+def reevaluate_centers(mu, clusters):
+    newmu = []
+    keys = sorted(clusters.keys())
+    for k in keys:
+        newmu.append(np.mean(clusters[k], axis = 0))
+    return newmu
+ 
+def has_converged(mu, oldmu):
+    return (set([tuple(a) for a in mu]) == set([tuple(a) for a in oldmu]))
+ 
+def find_centers(X, K):
+    # Initialize to K random centers
+    oldmu = random.sample(X, K)
+    mu = random.sample(X, K)
+    while not has_converged(mu, oldmu):
+        oldmu = mu
+        # Assign all points in X to clusters
+        clusters = cluster_points(X, mu)
+        # Reevaluate centers
+        mu = reevaluate_centers(oldmu, clusters)
+    return(mu, clusters)
+
+def getClusterLength(points):
+	highest = None
+	lowest = None
+	for point in points:
+		if highest is None:
+			highest = point[1]
+		elif point[1] > highest:
+			highest = point[1]
+		else:
+			highest = highest
+
+		if lowest is None:
+			lowest = point[1]
+		elif point[1] < lowest:
+			lowest = point[1]
+		else: 
+			lowest = lowest
+
+	distance = highest - lowest
+	return distance
+
+def colourBoxes(boxes, image, xvals, core):
+	for box in boxes:
+		for x in xvals:
+			print box
+			y1 = box[1]
+			image[y1,x] = [255,0,0]
+			y2 = box[0]
+			image[y2,x] = [255,0,0]
+
+def colourClusters(clusters, image):
+	for cluster in clusters:
+		image[cluster[1],cluster[0]] = [0,0,255]
+		image[cluster[1]+1,cluster[0]] = [0,0,255]
+		image[cluster[1],cluster[0]+1] = [0,0,255]
+		image[cluster[1],cluster[0]-1] = [0,0,255]
+		image[cluster[1]-1,cluster[0]] = [0,0,255]
+
+def saveBoxes(boxes, box_file):
+	bf = open(box_file, 'w')
+	for box in boxes:
+		bf.write(box)
+	
+
 def getMB(x1,y1,x2,y2):
 	rise = y2 - y1
 	run = x2 - x1
@@ -155,8 +275,15 @@ def click(event, x, y, flags, params):
 
 ##----------Global Variables-----------
 
-MAX_LINE_LENGTH = 2
+MIN_LINE_LENGTH = 3
 MAX_SLOPE = 5
+CORE_WIDTH = 31 #TODO find the pixel width of core when we take a pic with the orbec
+MAX_DISTANCE = 8
+CORE1_XVALS = range(1,31)
+CORE2_XVALS = range(32,62)
+CORE3_XVALS = range(63,94)
+NUM_CLUSTERS = 5
+MIN_CLUSTER_POINTS = 20
 
 ##--------------Program----------------
 
@@ -169,6 +296,9 @@ sub.call(["cp", "-f", image_path, new_image_path])
 # Read in new image for editing
 
 image = cv2.imread(new_image_path)
+#height, width = image.shape[:2]
+#print height
+#print width
 
 # Apply original ELSDc with no modification to parameters
 
@@ -192,5 +322,56 @@ cf = open(coords_file, 'r')
 for i, line in enumerate(cf.readlines()):
 	drawLine(line.rstrip("\n"), image)
 
+cf.close()
+
 cv2.imwrite(new_image_path, image)
 cv2.waitKey(0)
+
+# Scan all 3 cores for areas of high density and 'box' them
+
+core1_file = os.path.dirname(new_image_path)+"/output_core1.txt"
+core2_file = os.path.dirname(new_image_path)+"/output_core2.txt"
+core3_file = os.path.dirname(new_image_path)+"/output_core3.txt"
+
+height = image.shape[0]
+
+for i in [1, 2, 3]:
+	if i == 1:
+		f = open(core1_file, 'r')
+		xvals = CORE1_XVALS
+	elif i == 2:
+		f = open(core2_file, 'r')
+		xvals = CORE2_XVALS
+	else:
+		f = open(core3_file, 'r')
+		xvals = CORE3_XVALS
+
+	data = []
+	for line in f.readlines():
+		line.rstrip(",\n")
+		data.append(line.split(","))
+
+	print data
+	
+	(mu, clusters) = find_centers(data, NUM_CLUSTERS)
+	colourClusters(mu)
+
+	boxes = []
+	for centroid in mu:
+		print "CENTROID" + str(centroid)
+		boxed = False
+		if clusters[mu].length() < MIN_CLUSTER_POINTS:
+			next
+		else:
+			cluster_length = getClusterLength(clusters[mu])
+			for box in boxes:
+				if centroid[1] < box[1] and centroid[1] > box[0]:
+					boxed = True
+					break
+				else:
+					continue
+			if not boxed:
+				boxes.append((centroid[1]-int(cluster_length/2), centroid[1]-int(cluster_length/2)))
+	box_file = os.path.dirname(new_image_path)+"/core" + i + "_boxes.txt"
+	saveBoxes(boxes, box_file)
+	colourBoxes(boxes, image, xvals, i)
