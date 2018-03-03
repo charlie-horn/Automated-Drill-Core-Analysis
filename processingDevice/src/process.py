@@ -6,8 +6,12 @@ from PIL import Image
 import numpy as  np
 import cv2
 from matplotlib import pyplot as plt
+from matplotlib import image as mpimg
+from matplotlib.patches import Ellipse, Arc, Rectangle
+from numpy.linalg import eig, inv
 import subprocess as sub
 import sys
+import csv
 import os
 import math
 import re
@@ -184,7 +188,6 @@ def cluster_points(X, mu):
 				bestmukey = i[0]
 			else:
 				continue
-#bestmukey = min([(i[0], np.linalg.norm(x-mu[i[0]])) for i in enumerate(mu)], key=lambda t:t[1])[0]
 		try:
 			clusters[bestmukey].append(x)
 		except KeyError:
@@ -264,6 +267,7 @@ def saveBoxes(boxes, box_file):
 	bf = open(box_file, 'w')
 	for box in boxes:
 		bf.write(str(box))
+	bf.close()
 
 def getMB(x1,y1,x2,y2):
 	rise = y2 - y1
@@ -282,6 +286,119 @@ def click(event, x, y, flags, params):
 		print RGB
 		rgbs.append(RGB)
 
+# ELLIPSE FITTING
+
+def fitEllipse(x,y):
+    x = x[:,np.newaxis]
+    y = y[:,np.newaxis]
+    D =  np.hstack((x*x, x*y, y*y, x, y, np.ones_like(x)))
+    S = np.dot(D.T,D)
+    C = np.zeros([6,6])
+    C[0,2] = C[2,0] = 2; C[1,1] = -1
+    E, V =  eig(np.dot(inv(S), C))
+    n = np.argmax(np.abs(E))
+    a = V[:,n]
+    return a
+
+def ellipse_center(a):
+    b,c,d,f,g,a = a[1]/2, a[2], a[3]/2, a[4]/2, a[5], a[0]
+    num = b*b-a*c
+    x0=(c*d-b*f)/num
+    y0=(a*f-b*d)/num
+    return np.array([x0,y0])
+
+
+def ellipse_angle_of_rotation( a ):
+    b,c,d,f,g,a = a[1]/2, a[2], a[3]/2, a[4]/2, a[5], a[0]
+    return 0.5*np.arctan(2*b/(a-c))
+
+
+def ellipse_axis_length( a ):
+    b,c,d,f,g,a = a[1]/2, a[2], a[3]/2, a[4]/2, a[5], a[0]
+    up = 2*(a*f*f+c*d*d+g*b*b-2*b*d*f-a*c*g)
+    down1=(b*b-a*c)*( (c-a)*np.sqrt(1+4*b*b/((a-c)*(a-c)))-(c+a))
+    down2=(b*b-a*c)*( (a-c)*np.sqrt(1+4*b*b/((a-c)*(a-c)))-(c+a))
+    res1=np.sqrt(up/down1)
+    res2=np.sqrt(up/down2)
+    return np.array([res1, res2])
+
+def ellipse_angle_of_rotation2( a ):
+    b,c,d,f,g,a = a[1]/2, a[2], a[3]/2, a[4]/2, a[5], a[0]
+    if b == 0:
+        if a > c:
+            return 0
+        else:
+            return np.pi/2
+    else: 
+        if a > c:
+            return np.arctan(2*b/(a-c))/2
+        else:
+            return np.pi/2 + np.arctan(2*b/(a-c))/2
+
+def fitToBox(boxes, image_path, f, xvals):
+	
+	img=mpimg.imread(image_path)
+	imgplot = plt.imshow(img, cmap='gray')
+
+	fig = plt.gcf()
+	ax = fig.gca()
+
+	for box in boxes:
+		top = int(box[1])
+		print "TOP: " + str(top)
+		bot = int(box[0])
+		print "BOTTOM: " + str(bot)
+		left = xvals[0]
+		print "LEFT: " + str(left)
+		right = xvals[-1]
+		print "RIGHT: " + str(right)
+
+		rec = Rectangle(
+				(left, top),   # (x,y)
+				right-left,          # width
+				bot-top,          # height
+				fill = False,
+				edgecolor="red"
+			)
+		ax.add_patch(rec)
+
+		x = []
+		y = []
+		xt = []
+		yt = []
+
+		f.seek(0)
+		for line in f.readlines():
+			coords = []
+			line.rstrip(',\n')
+			for point in line.split(","):
+				if point != '\n':
+					coords.append(complex(point))
+			for point in coords:
+				x.append(point.real)
+				y.append(point.imag)
+				if point.real > left and point.real < right:
+					print "BETWEEN"
+					if point.imag > bot and point.imag < top:
+						xt.append(point.real)
+						yt.append(point.imag)
+
+		plt.scatter(x, y, s=1, c="green", alpha=0.5)
+		plt.scatter(xt, yt, s=1, c="blue", alpha=0.5)
+		xt = np.asarray(xt)
+		yt = np.asarray(yt)
+
+		el = fitEllipse(xt,yt)
+		center = ellipse_center(el)
+		phi = ellipse_angle_of_rotation(el)
+		axes = ellipse_axis_length(el)
+
+		elFit = Ellipse(xy=(center[0], center[1]), width=2*axes[1], height=2*axes[0], angle=phi*180/math.pi, edgecolor='y', fc='None', lw=1)
+
+		ax.add_patch(elFit)
+
+
+		plt.show()
 
 ##--------------Classes----------------
 
@@ -301,7 +418,7 @@ MAX_DISTANCE = 8
 CORE1_XVALS = range(1,31)
 CORE2_XVALS = range(32,62)
 CORE3_XVALS = range(63,94)
-NUM_CLUSTERS = 10
+NUM_CLUSTERS = 5
 MIN_CLUSTER_POINTS = 20
 
 ##--------------Program----------------
@@ -394,13 +511,17 @@ for i in [1, 2, 3]:
 		except KeyError:
 			continue
 	box_file = os.path.dirname(new_image_path)+"/core" + str(i) + "_boxes.txt"
-	saveBoxes(boxes, box_file)
-	colourBoxes(boxes, image, xvals, i)
+	print i
+	if boxes != []:
+		saveBoxes(boxes, box_file)
+		colourBoxes(boxes, image, xvals, i)
+		cv2.imwrite(new_image_path, image)
+		fitToBox(boxes, new_image_path, f, xvals)
+	f.close()
 
 # Write alterred pixels to the image
 # TODO regularly write this and display to the user
 
-cv2.imwrite(new_image_path, image)
-cv2.waitKey(0)
+	cv2.imwrite(new_image_path, image)
 
 
