@@ -51,19 +51,19 @@ def svgToCoords(svg_path):
 			y2 = float(line_match.group('y2'))
 
 			start = complex(x1,y1)
-			middle = (int(x1+(x2-x1)/2),int(y1+(y2-y1)/2))
+			middle = complex(int(x1+(x2-x1)/2),int(y1+(y2-y1)/2))
 			end = complex(float(x2),float(y2))
 
 			coords = getLineCoords(start, end)
 			if coords != []:
-				if middle[0] in CORE1_XVALS:
-					for i in coords: core_1.write(str(middle)+",")
+				if middle.real in CORE1_XVALS:
+					for i in coords: core_1.write(str(i)+",")
 					core_1.write("\n")
-				elif middle[0] in CORE2_XVALS:
-					for i in coords: core_2.write(str(middle)+",")
+				elif middle.real in CORE2_XVALS:
+					for i in coords: core_2.write(str(i)+",")
 					core_2.write("\n")
-				elif middle[0] in CORE3_XVALS:
-					for i in coords: core_3.write(str(middle)+",")
+				elif middle.real in CORE3_XVALS:
+					for i in coords: core_3.write(str(i)+",")
 					core_3.write("\n")
 				else:
 					print "SOMETHING FUCKED UP"
@@ -85,17 +85,20 @@ def svgToCoords(svg_path):
 
 			start = complex(x1,y1)
 			radius = complex(float(r1),float(r2))
-			middle = (int(x1+(x2-x1)/2),int(y1+(y2-y1)/2))
+			middle = complex(int(x1+(x2-x1)/2),int(y1+(y2-y1)/2))
 			end = complex(x2,y2)
 
 			coords = getPathCoords(start, radius, rotation, arc, sweep, end)
 			if coords != []:
-				if middle[0] in CORE1_XVALS:
-					core_1.write(str(middle)+"\n")
-				elif middle[0] in CORE2_XVALS:
-					core_2.write(str(middle)+"\n")
-				elif middle[0] in CORE3_XVALS:
-					core_3.write(str(middle)+"\n")
+				if middle.real in CORE1_XVALS:
+					for i in coords: core_1.write(str(i)+",")
+					core_1.write("\n")
+				elif middle.real in CORE2_XVALS:
+					for i in coords: core_2.write(str(i)+",")
+					core_2.write("\n")
+				elif middle.real in CORE3_XVALS:
+					for i in coords: core_3.write(str(i)+",")
+					core_3.write("\n")
 				else:
 					print "SOMETHING FUCKED UP"
 				out_f.write(str(coords))
@@ -172,12 +175,20 @@ def getSlope(start, end):
 def cluster_points(X, mu):
     clusters  = {}
     for x in X:
-        bestmukey = min([(i[0], np.linalg.norm(x-mu[i[0]])) \
-                    for i in enumerate(mu)], key=lambda t:t[1])[0]
-        try:
-            clusters[bestmukey].append(x)
-        except KeyError:
-            clusters[bestmukey] = [x]
+		minDist = None
+		bestmukey = None
+		for i in enumerate(mu):
+			dist = np.linalg.norm([x[0]-i[1][0],x[1]-i[1][1]])
+			if minDist is None or minDist > dist:
+				minDist = dist
+				bestmukey = i[0]
+			else:
+				continue
+#bestmukey = min([(i[0], np.linalg.norm(x-mu[i[0]])) for i in enumerate(mu)], key=lambda t:t[1])[0]
+		try:
+			clusters[bestmukey].append(x)
+		except KeyError:
+			clusters[bestmukey] = [x]
     return clusters
  
 def reevaluate_centers(mu, clusters):
@@ -193,6 +204,7 @@ def has_converged(mu, oldmu):
 def find_centers(X, K):
     # Initialize to K random centers
     oldmu = random.sample(X, K)
+    clusters = cluster_points(X, oldmu)
     mu = random.sample(X, K)
     while not has_converged(mu, oldmu):
         oldmu = mu
@@ -224,13 +236,21 @@ def getClusterLength(points):
 	return distance
 
 def colourBoxes(boxes, image, xvals, core):
+
 	for box in boxes:
-		for x in xvals:
-			print box
-			y1 = box[1]
+		x1 = xvals[0]
+		y1 = box[1]
+		x2 = xvals[-1]
+		y2 = box[0]
+		for x in xvals:	
 			image[y1,x] = [255,0,0]
-			y2 = box[0]
 			image[y2,x] = [255,0,0]
+	
+		y = min(y1,y2)
+		while y < max(y1,y2):
+			image[y,x1] = [255,0,0]
+			image[y,x2] = [255,0,0]
+			y += 1
 
 def colourClusters(clusters, image):
 	for cluster in clusters:
@@ -243,8 +263,7 @@ def colourClusters(clusters, image):
 def saveBoxes(boxes, box_file):
 	bf = open(box_file, 'w')
 	for box in boxes:
-		bf.write(box)
-	
+		bf.write(str(box))
 
 def getMB(x1,y1,x2,y2):
 	rise = y2 - y1
@@ -282,7 +301,7 @@ MAX_DISTANCE = 8
 CORE1_XVALS = range(1,31)
 CORE2_XVALS = range(32,62)
 CORE3_XVALS = range(63,94)
-NUM_CLUSTERS = 5
+NUM_CLUSTERS = 10
 MIN_CLUSTER_POINTS = 20
 
 ##--------------Program----------------
@@ -297,8 +316,6 @@ sub.call(["cp", "-f", image_path, new_image_path])
 
 image = cv2.imread(new_image_path)
 #height, width = image.shape[:2]
-#print height
-#print width
 
 # Apply original ELSDc with no modification to parameters
 
@@ -324,9 +341,6 @@ for i, line in enumerate(cf.readlines()):
 
 cf.close()
 
-cv2.imwrite(new_image_path, image)
-cv2.waitKey(0)
-
 # Scan all 3 cores for areas of high density and 'box' them
 
 core1_file = os.path.dirname(new_image_path)+"/output_core1.txt"
@@ -348,30 +362,45 @@ for i in [1, 2, 3]:
 
 	data = []
 	for line in f.readlines():
-		line.rstrip(",\n")
-		data.append(line.split(","))
-
-	print data
+		line.rstrip(',\n')
+		for point in line.split(","): 
+			if point != '\n':
+				data.append((complex(point).real,complex(point).imag))
 	
 	(mu, clusters) = find_centers(data, NUM_CLUSTERS)
-	colourClusters(mu)
+	colourClusters(mu, image)
 
 	boxes = []
-	for centroid in mu:
-		print "CENTROID" + str(centroid)
+	for centroid in enumerate(mu):
 		boxed = False
-		if clusters[mu].length() < MIN_CLUSTER_POINTS:
-			next
-		else:
-			cluster_length = getClusterLength(clusters[mu])
-			for box in boxes:
-				if centroid[1] < box[1] and centroid[1] > box[0]:
-					boxed = True
-					break
-				else:
-					continue
-			if not boxed:
-				boxes.append((centroid[1]-int(cluster_length/2), centroid[1]-int(cluster_length/2)))
-	box_file = os.path.dirname(new_image_path)+"/core" + i + "_boxes.txt"
+		try:
+			if len(clusters[centroid[0]]) < MIN_CLUSTER_POINTS:
+				next
+			else:
+				cluster_length = getClusterLength(clusters[centroid[0]])
+				for box in enumerate(boxes):
+					if centroid[1][1]+int(cluster_length/2) < box[1][1] and centroid[1][1]+int(cluster_length/2) > box[1][0]:
+						boxed = True
+						boxes[box[0]][0] = centroid[1][1]-int(cluster_length/2)
+						break
+					elif centroid[1][1]-int(cluster_length/2) < box[1][1] and centroid[1][1]-int(cluster_length/2) > box[1][0]:
+						boxed = True
+						boxes[box[0]][1] = centroid[1][1]+int(cluster_length/2)
+						break
+					else:
+						continue
+				if not boxed:
+					boxes.append([centroid[1][1]-int(cluster_length/2), centroid[1][1]+int(cluster_length/2)])
+		except KeyError:
+			continue
+	box_file = os.path.dirname(new_image_path)+"/core" + str(i) + "_boxes.txt"
 	saveBoxes(boxes, box_file)
 	colourBoxes(boxes, image, xvals, i)
+
+# Write alterred pixels to the image
+# TODO regularly write this and display to the user
+
+cv2.imwrite(new_image_path, image)
+cv2.waitKey(0)
+
+
