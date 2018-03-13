@@ -276,15 +276,40 @@ def getMB(x1,y1,x2,y2):
 	intercept = y1 - slope*x1
 	return slope, intercept
 
-def click(event, x, y, flags, params):
-	global points
+def addBox2(event, x, y, flags, params):
+	global added_boxes
+
+	if event == cv2.EVENT_LBUTTONDOWN or event == cv2.EVENT_LBUTTONUP:
+		if event == cv2.EVENT_LBUTTONDOWN:
+			start = (int(x),int(y))
+			print "START: " + str((x,y))
+		if event == cv2.EVENT_LBUTTONUP:
+			end = (int(x), int(y))
+			print "END: " + str((x,y))
+		added_boxes.append(start,end)
+
+def addBox(event, x, y, flags, param):
+	global added_box_points, adding
+ 
+	if event == cv2.EVENT_LBUTTONDOWN:
+		start = (x, y)
+		added_box_points.append(start)
+		adding = True
+ 
+	elif event == cv2.EVENT_LBUTTONUP:
+		end = (x,y)
+		added_box_points.append(end)
+		adding = False
+
+def removeBox(event, x, y, flags, params):
+	global removed_boxes
 
 	if event == cv2.EVENT_LBUTTONUP:
-		points.append((x, y))
-		RGB = pixels[x,y]
-		print (x,y)
-		print RGB
-		rgbs.append(RGB)
+		click = (int(x), int(y))
+		print "CLICK: " + str((x,y))
+		removed_boxes.append(click)
+
+
 
 # ELLIPSE FITTING
 
@@ -439,6 +464,11 @@ CORE3_XVALS = range(63,94)
 NUM_CLUSTERS = 20
 MIN_CLUSTER_POINTS = 5
 SNAP_DIST = 7
+
+removed_boxes = []
+added_box_points = []
+added_boxes = []
+adding = False
 ##--------------Program----------------
 
 # Copy to a new image so the original doesn't get alterred
@@ -446,6 +476,15 @@ SNAP_DIST = 7
 image_path = sys.argv[1]
 new_image_path = os.path.splitext(image_path)[0]+"_alterred"+os.path.splitext(image_path)[1]
 sub.call(["cp", "-f", image_path, new_image_path])
+
+# For later when we take user input TODO clean this up and stop reproducing the image
+image_with_deleted_boxes = os.path.splitext(image_path)[0]+"_with_boxes_removed"+os.path.splitext(image_path)[1]
+sub.call(["cp", "-f", image_path, image_with_deleted_boxes])
+im_w_del = cv2.imread(image_with_deleted_boxes)
+
+image_with_added_boxes = os.path.splitext(image_path)[0]+"_with_boxes_added"+os.path.splitext(image_path)[1]
+sub.call(["cp", "-f", image_path, image_with_added_boxes])
+im_w_add = cv2.imread(image_with_added_boxes)
 
 # Read in new image for editing
 
@@ -473,6 +512,8 @@ cf = open(coords_file, 'r')
 
 for i, line in enumerate(cf.readlines()):
 	drawLine(line.rstrip("\n"), image)
+	drawLine(line.rstrip("\n"), im_w_del)
+	drawLine(line.rstrip("\n"), im_w_add)
 
 cf.close()
 
@@ -487,12 +528,15 @@ height = image.shape[0]
 for i in [1, 2, 3]:
 	if i == 1:
 		f = open(core1_file, 'r')
+		core1boxes = []
 		xvals = CORE1_XVALS
 	elif i == 2:
 		f = open(core2_file, 'r')
+		core2boxes = []
 		xvals = CORE2_XVALS
 	else:
 		f = open(core3_file, 'r')
+		core3boxes = []
 		xvals = CORE3_XVALS
 
 	data = []
@@ -504,6 +548,8 @@ for i in [1, 2, 3]:
 	
 	(mu, clusters) = find_centers(data, NUM_CLUSTERS)
 	colourClusters(mu, image)
+	colourClusters(mu, im_w_del)
+	colourClusters(mu, im_w_add)
 
 	boxes = []
 
@@ -513,21 +559,124 @@ for i in [1, 2, 3]:
 				next
 			else:
 				cluster_length = getClusterLength(clusters[centroid[0]])
-				boxes.append([centroid[1][1]-int(cluster_length/2), centroid[1][1]+int(cluster_length/2)])
+				boxes.append([int(centroid[1][1]-int(cluster_length/2)), int(centroid[1][1]+int(cluster_length/2))])
 		except KeyError:
 			continue
-	box_file = os.path.dirname(new_image_path)+"/core" + str(i) + "_boxes.txt"
+	#box_file = os.path.dirname(new_image_path)+"/core" + str(i) + "_boxes.txt"
 	if boxes != []:
 		boxes = mergeBoxes(boxes)
-		saveBoxes(boxes, box_file)
-		colourBoxes(boxes, image, xvals, i)
+		if i == 1:
+			core1boxes = boxes
+		elif i == 2:
+			core2boxes = boxes
+		else:
+			core3boxes = boxes
+		#saveBoxes(boxes, box_file)
+		#colourBoxes(boxes, im_w_del, xvals, i)
+		#colourBoxes(boxes, im_w_add, xvals, i)
 		cv2.imwrite(new_image_path, image)
-		#fitToBox(boxes, new_image_path, f, xvals)
 	f.close()
+
+colourBoxes(core1boxes, image, CORE1_XVALS, 1)
+colourBoxes(core2boxes, image, CORE2_XVALS, 2)
+colourBoxes(core3boxes, image, CORE3_XVALS, 3)
+cv2.imwrite(new_image_path, image)
+
+cv2.namedWindow('Click Any Boxes to Remove', cv2.WINDOW_NORMAL)
+cv2.setMouseCallback('Click Any Boxes to Remove', removeBox)
+cv2.imshow('Click Any Boxes to Remove', image)
+cv2.waitKey(0)
+cv2.destroyAllWindows
+
+core1_to_remove = []
+core2_to_remove = []
+core3_to_remove = []
+
+for click in removed_boxes:
+	#print "CLICK: " + str(click)
+	if click[0] in CORE1_XVALS:
+		for i,box in enumerate(core1boxes):
+			if click[1] in range(box[0],box[1]):
+				core1_to_remove.append(i)
+	elif click[0] in CORE2_XVALS:
+		for i,box in enumerate(core2boxes):
+			if click[1] in range(box[0],box[1]):
+				core2_to_remove.append(i)
+	elif click[0] in CORE3_XVALS:
+		for i,box in enumerate(core3boxes):
+			if click[1] in range(box[0],box[1]):
+				core3_to_remove.append(i)
+	else:
+		print "Click out of range, skipping this box deletion"
+
+#print "CORE 1 TO REMOVE" + str(core1_to_remove)
+core1_to_remove.sort(reverse=True)
+for i in core1_to_remove:
+	#print i
+	del core1boxes[i]
+
+core2_to_remove.sort(reverse=True)
+for i in core2_to_remove:
+	#print i
+	del core2boxes[i]
+
+core3_to_remove.sort(reverse=True)
+for i in core3_to_remove:
+	#print i
+	del core3boxes[i]
+
+colourBoxes(core1boxes, im_w_del, CORE1_XVALS, 1)
+colourBoxes(core2boxes, im_w_del, CORE2_XVALS, 2)
+colourBoxes(core3boxes, im_w_del, CORE3_XVALS, 3)
+
+cv2.imwrite(image_with_deleted_boxes, im_w_del)
+
+cv2.namedWindow('Click and Drag to Create New  Boxes', cv2.WINDOW_NORMAL)
+cv2.setMouseCallback('Click and Drag to Create New  Boxes', addBox)
+cv2.imshow('Click and Drag to Create New  Boxes', im_w_del)
+cv2.waitKey(0)
+cv2.destroyAllWindows
+
+box = [(1,2),(3,4)]
+for i,point in enumerate(added_box_points):
+	if i%2 == 0:
+		box[0] = point
+	else:
+		box[1] = point
+		if box[0][1] > box[1][1]:
+			tmp = box[0]
+			box[0] = box[1]
+			box[1] = tmp
+		added_boxes.append(box)
+
+for box in added_boxes:
+	if box[0][0] in CORE1_XVALS and box[1][0] in CORE1_XVALS:
+		core1boxes.append((box[0][1],box[1][1]))
+	elif box[0][0] in CORE2_XVALS and box[1][0] in CORE2_XVALS:
+		core2boxes.append((box[0][1],box[1][1]))
+	elif box[0][0] in CORE3_XVALS and box[1][0] in CORE3_XVALS:
+		core3boxes.append((box[0][1],box[1][1]))
+	else:
+		print "Box not included, xvals not in range"
+
+colourBoxes(core1boxes, im_w_add, CORE1_XVALS, 1)
+colourBoxes(core2boxes, im_w_add, CORE2_XVALS, 2)
+colourBoxes(core3boxes, im_w_add, CORE3_XVALS, 3)
+
+cv2.imwrite(image_with_added_boxes, im_w_add)
+
+cv2.imshow('This image will be used to fit ellipses', im_w_add)
+cv2.waitKey(0)
+cv2.destroyAllWindows
+
+#TODO Colour all boxes to image w add
+
+#fitToBox(boxes, new_image_path, f, xvals)
+
 
 # Write alterred pixels to the image
 # TODO regularly write this and display to the user
 
-	cv2.imwrite(new_image_path, image)
+#cv2.imwrite(new_image_path, image)
 
 
