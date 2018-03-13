@@ -345,13 +345,9 @@ def fitToBox(boxes, image_path, f, xvals):
 
 	for box in boxes:
 		top = int(box[1])
-		print "TOP: " + str(top)
 		bot = int(box[0])
-		print "BOTTOM: " + str(bot)
 		left = xvals[0]
-		print "LEFT: " + str(left)
 		right = xvals[-1]
-		print "RIGHT: " + str(right)
 
 		rec = Rectangle(
 				(left, top),   # (x,y)
@@ -378,11 +374,10 @@ def fitToBox(boxes, image_path, f, xvals):
 				x.append(point.real)
 				y.append(point.imag)
 				if point.real > left and point.real < right:
-					print "BETWEEN"
 					if point.imag > bot and point.imag < top:
 						xt.append(point.real)
 						yt.append(point.imag)
-
+		if xt == [] or yt == []: continue
 		plt.scatter(x, y, s=1, c="green", alpha=0.5)
 		plt.scatter(xt, yt, s=1, c="blue", alpha=0.5)
 		xt = np.asarray(xt)
@@ -400,6 +395,29 @@ def fitToBox(boxes, image_path, f, xvals):
 
 		plt.show()
 
+def mergeBoxes(boxes):
+	changes = False
+	new_boxes = []
+	to_remove = []
+	for i,ref_box in enumerate(boxes):
+		if i in to_remove: next
+		for j,comp_box in enumerate(boxes):
+			if i == j: next
+			if ref_box[0] < comp_box[1]+SNAP_DIST and ref_box[0] > comp_box[0]:
+				changes = True
+				ref_box[0] = comp_box[0]
+				to_remove.append(j)
+			elif ref_box[1] > comp_box[0]-SNAP_DIST and ref_box[1] < comp_box[1]:
+				changes = True
+				ref_box[1] = comp_box[1]
+				to_remove.append(j)
+			else:
+				pass
+		new_boxes.append(ref_box)
+	if changes:
+		return mergeBoxes(new_boxes)
+	else:
+		return new_boxes
 ##--------------Classes----------------
 
 # class Feature {}
@@ -418,9 +436,9 @@ MAX_DISTANCE = 8
 CORE1_XVALS = range(1,31)
 CORE2_XVALS = range(32,62)
 CORE3_XVALS = range(63,94)
-NUM_CLUSTERS = 5
-MIN_CLUSTER_POINTS = 20
-
+NUM_CLUSTERS = 20
+MIN_CLUSTER_POINTS = 5
+SNAP_DIST = 7
 ##--------------Program----------------
 
 # Copy to a new image so the original doesn't get alterred
@@ -488,35 +506,23 @@ for i in [1, 2, 3]:
 	colourClusters(mu, image)
 
 	boxes = []
+
 	for centroid in enumerate(mu):
-		boxed = False
 		try:
 			if len(clusters[centroid[0]]) < MIN_CLUSTER_POINTS:
 				next
 			else:
 				cluster_length = getClusterLength(clusters[centroid[0]])
-				for box in enumerate(boxes):
-					if centroid[1][1]+int(cluster_length/2) < box[1][1] and centroid[1][1]+int(cluster_length/2) > box[1][0]:
-						boxed = True
-						boxes[box[0]][0] = centroid[1][1]-int(cluster_length/2)
-						break
-					elif centroid[1][1]-int(cluster_length/2) < box[1][1] and centroid[1][1]-int(cluster_length/2) > box[1][0]:
-						boxed = True
-						boxes[box[0]][1] = centroid[1][1]+int(cluster_length/2)
-						break
-					else:
-						continue
-				if not boxed:
-					boxes.append([centroid[1][1]-int(cluster_length/2), centroid[1][1]+int(cluster_length/2)])
+				boxes.append([centroid[1][1]-int(cluster_length/2), centroid[1][1]+int(cluster_length/2)])
 		except KeyError:
 			continue
 	box_file = os.path.dirname(new_image_path)+"/core" + str(i) + "_boxes.txt"
-	print i
 	if boxes != []:
+		boxes = mergeBoxes(boxes)
 		saveBoxes(boxes, box_file)
 		colourBoxes(boxes, image, xvals, i)
 		cv2.imwrite(new_image_path, image)
-		fitToBox(boxes, new_image_path, f, xvals)
+		#fitToBox(boxes, new_image_path, f, xvals)
 	f.close()
 
 # Write alterred pixels to the image

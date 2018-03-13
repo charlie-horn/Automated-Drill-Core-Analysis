@@ -95,3 +95,18 @@ def getLineCoords_bk(edge):
 				y += 1
 				continue
 
+
+
+#Old stuff from merging
+
+				for box in enumerate(boxes):
+					if centroid[1][1]+int(cluster_length/2) < box[1][1] and centroid[1][1]+int(cluster_length/2) > box[1][0]-SNAP_DIST:
+						boxed = True
+						boxes[box[0]][0] = centroid[1][1]-int(cluster_length/2)
+						next
+					elif centroid[1][1]-int(cluster_length/2) < box[1][1]+SNAP_DIST and centroid[1][1]-int(cluster_length/2) > box[1][0]:
+						boxed = True
+						boxes[box[0]][1] = centroid[1][1]+int(cluster_length/2)
+						next
+					else:
+						continue
