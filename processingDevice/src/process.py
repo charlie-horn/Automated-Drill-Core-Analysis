@@ -461,9 +461,9 @@ MAX_DISTANCE = 8
 CORE1_XVALS = range(1,31)
 CORE2_XVALS = range(32,62)
 CORE3_XVALS = range(63,94)
-NUM_CLUSTERS = 20
-MIN_CLUSTER_POINTS = 5
-SNAP_DIST = 7
+NUM_CLUSTERS = 30
+MIN_CLUSTER_POINTS = 8
+SNAP_DIST = 9
 
 removed_boxes = []
 added_box_points = []
@@ -564,7 +564,7 @@ for i in [1, 2, 3]:
 			continue
 	#box_file = os.path.dirname(new_image_path)+"/core" + str(i) + "_boxes.txt"
 	if boxes != []:
-		boxes = mergeBoxes(boxes)
+		#boxes = mergeBoxes(boxes)
 		if i == 1:
 			core1boxes = boxes
 		elif i == 2:
@@ -662,6 +662,8 @@ for box in added_boxes:
 colourBoxes(core1boxes, im_w_add, CORE1_XVALS, 1)
 colourBoxes(core2boxes, im_w_add, CORE2_XVALS, 2)
 colourBoxes(core3boxes, im_w_add, CORE3_XVALS, 3)
+
+print len(core1boxes) + len(core2boxes) + len(core3boxes)
 
 cv2.imwrite(image_with_added_boxes, im_w_add)
 
