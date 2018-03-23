@@ -1,5 +1,4 @@
 
-
 ##--------------Libraries----------------
 
 from PIL import Image
@@ -18,6 +17,7 @@ import re
 import shutil
 from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier
 import random
+
 ##--------------Subroutines----------------
 
 def svgToCoords(svg_path):
@@ -484,11 +484,11 @@ MIN_LINE_LENGTH = 3
 MAX_SLOPE = 5
 CORE_WIDTH = 31 #TODO find the pixel width of core when we take a pic with the orbec
 MAX_DISTANCE = 8
-CORE1_XVALS = range(1,31)
-CORE2_XVALS = range(32,62)
+CORE1_XVALS = range(1,33)
+CORE2_XVALS = range(34,63)
 CORE3_XVALS = range(63,94)
 NUM_CLUSTERS = 20
-MIN_CLUSTER_POINTS = 8
+MIN_CLUSTER_POINTS = 6
 SNAP_DIST = 9
 
 removed_boxes = []
@@ -541,10 +541,10 @@ for i, line in enumerate(cf.readlines()):
 	drawLine(line.rstrip("\n"), im_w_del)
 	drawLine(line.rstrip("\n"), im_w_add)
 
-cv2.namedWindow('image', cv2.WINDOW_NORMAL)
-cv2.imshow('image',image)
-cv2.waitKey(0)
-cv2.destroyAllWindows
+#cv2.namedWindow('image', cv2.WINDOW_NORMAL)
+#cv2.imshow('image',image)
+#cv2.waitKey(0)
+#cv2.destroyAllWindows
 
 
 cf.close()
