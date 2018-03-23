@@ -245,15 +245,22 @@ def colourBoxes(boxes, image, xvals, core):
 		y1 = box[1]
 		x2 = xvals[-1]
 		y2 = box[0]
-		for x in xvals:	
-			image[y1,x] = [255,0,0]
-			image[y2,x] = [255,0,0]
+		for x in xvals:
+			try:
+				image[y1,x] = [255,0,0]
+				image[y2,x] = [255,0,0]
+			except IndexError:
+				next
 	
 		y = min(y1,y2)
 		while y < max(y1,y2):
-			image[y,x1] = [255,0,0]
-			image[y,x2] = [255,0,0]
-			y += 1
+			try:
+				image[y,x1] = [255,0,0]
+				image[y,x2] = [255,0,0]
+				y += 1
+			except IndexError:
+				y += 1
+				next
 
 def colourClusters(clusters, image):
 	for cluster in clusters:
@@ -443,6 +450,25 @@ def mergeBoxes(boxes):
 		return mergeBoxes(new_boxes)
 	else:
 		return new_boxes
+
+def removeSmallBoxes(boxes, image, xvals):
+	new_boxes = []
+	for i,box in enumerate(boxes):
+		count = 0
+		big_enough = False
+		y = box[0]
+		while y <= box[1]:
+			for x in xvals:
+				if image[y,x][0] == 0 and image[y,x][1] == 255 and image[y,x][2] == 0:
+					count = count + 1
+			if count > MIN_CLUSTER_POINTS:
+				big_enough = True
+				break
+			y = y + 1
+		if big_enough:
+			new_boxes.append(box)
+	return new_boxes
+
 ##--------------Classes----------------
 
 # class Feature {}
@@ -461,7 +487,7 @@ MAX_DISTANCE = 8
 CORE1_XVALS = range(1,31)
 CORE2_XVALS = range(32,62)
 CORE3_XVALS = range(63,94)
-NUM_CLUSTERS = 30
+NUM_CLUSTERS = 20
 MIN_CLUSTER_POINTS = 8
 SNAP_DIST = 9
 
@@ -515,6 +541,12 @@ for i, line in enumerate(cf.readlines()):
 	drawLine(line.rstrip("\n"), im_w_del)
 	drawLine(line.rstrip("\n"), im_w_add)
 
+cv2.namedWindow('image', cv2.WINDOW_NORMAL)
+cv2.imshow('image',image)
+cv2.waitKey(0)
+cv2.destroyAllWindows
+
+
 cf.close()
 
 # Scan all 3 cores for areas of high density and 'box' them
@@ -555,16 +587,14 @@ for i in [1, 2, 3]:
 
 	for centroid in enumerate(mu):
 		try:
-			if len(clusters[centroid[0]]) < MIN_CLUSTER_POINTS:
-				next
-			else:
-				cluster_length = getClusterLength(clusters[centroid[0]])
-				boxes.append([int(centroid[1][1]-int(cluster_length/2)), int(centroid[1][1]+int(cluster_length/2))])
+			cluster_length = getClusterLength(clusters[centroid[0]])
+			boxes.append([int(centroid[1][1]-int(cluster_length/2)), int(centroid[1][1]+int(cluster_length/2))])
 		except KeyError:
 			continue
 	#box_file = os.path.dirname(new_image_path)+"/core" + str(i) + "_boxes.txt"
 	if boxes != []:
-		#boxes = mergeBoxes(boxes)
+		boxes = mergeBoxes(boxes)
+		boxes = removeSmallBoxes(boxes,image,xvals)
 		if i == 1:
 			core1boxes = boxes
 		elif i == 2:
@@ -667,6 +697,7 @@ print len(core1boxes) + len(core2boxes) + len(core3boxes)
 
 cv2.imwrite(image_with_added_boxes, im_w_add)
 
+cv2.namedWindow('This image will be used to fit ellipses', cv2.WINDOW_NORMAL)
 cv2.imshow('This image will be used to fit ellipses', im_w_add)
 cv2.waitKey(0)
 cv2.destroyAllWindows
