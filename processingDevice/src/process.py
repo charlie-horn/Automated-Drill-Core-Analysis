@@ -459,8 +459,11 @@ def removeSmallBoxes(boxes, image, xvals):
 		y = box[0]
 		while y <= box[1]:
 			for x in xvals:
-				if image[y,x][0] == 0 and image[y,x][1] == 255 and image[y,x][2] == 0:
-					count = count + 1
+				try:
+					if image[y,x][0] == 0 and image[y,x][1] == 255 and image[y,x][2] == 0:
+						count = count + 1
+				except IndexError:
+					next
 			if count > MIN_CLUSTER_POINTS:
 				big_enough = True
 				break

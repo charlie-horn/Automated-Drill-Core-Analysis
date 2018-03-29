@@ -963,7 +963,9 @@ void ELSDc( PImageDouble in, int *ell_count, Ring **ell_out, int **ell_labels,
       /* polygon's best validation score */
       min_size_poly =(int)((-logNT_poly - mlog10eps)/log10(p));
       
-      if( reg_size > min_size_poly )
+      if( reg_size > min_size_poly ) 
+	  /* CHARLIE */
+	  /*if( 0 )*/
         {
           best_nfa = poly_improve( angles0, used, poly, &best_buff, 
                                    &size_best_buff, &tmp_buff, logNT_poly );
@@ -979,7 +981,9 @@ void ELSDc( PImageDouble in, int *ell_count, Ring **ell_out, int **ell_labels,
                               &size_new_buff, &tmp_buff, logNT_seg );
     
       /* if more meaningful than previous, update best feature */
-      if( log_nfa > best_nfa && size_new_buff>min_size_seg ) 
+      /*CHARLIE */
+	  if( log_nfa > best_nfa && size_new_buff>min_size_seg )
+		/*if( 0 )
         {
           best_nfa = log_nfa;
           best_feature = (void*)seg;
