@@ -169,7 +169,7 @@ int main( int argc, char **argv )
       free(poly_out); 
       free(poly_labels);
     }
-  printf("Number of ellipses detected = %d\n",ell_count);
-  printf("Number of polygons detected = %d\n",poly_count);
+  /* printf("Number of ellipses detected = %d\n",ell_count);
+  printf("Number of polygons detected = %d\n",poly_count);*/
   return 0;
 }
