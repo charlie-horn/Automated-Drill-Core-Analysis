@@ -1,7 +1,12 @@
 #!/bin/bash
 
 image=$(zenity --file-selection --title="Choose image")
-outputDir=$(zenity --file-selection --directory --title="Choose output folder")
+dirname=$(dirname $0)
+basename=$(basename $0)
+separator="/"
+pythonFileName="process.py"
+fullPythonPath=$PWD$separator$dirname$separator$pythonFileName
+outputDir=$PWD$separator$dirname$separator$"../output/"
 defaultOutputFolder=$(date '+%d_%m_%Y_%H_%M_%S')
 outputFolder=$(zenity --entry --title "Outlier Fraction" --text="Pick a name for the output folder." --entry-text=$defaultOutputFolder)
 
@@ -13,4 +18,4 @@ image_name=$(basename "$image")
 separator="/"
 new_image_path=$PWD$separator$image_name
 
-python $HOME/MTHE493/processingDevice/src/process.py $new_image_path
+python $fullPythonPath $new_image_path
